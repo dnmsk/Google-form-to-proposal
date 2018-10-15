@@ -3,39 +3,24 @@
   Variables must be named like {Question name} in Form, symbols {} are necessary.
   Block can be marked as 'Hidable' by any conditions, with condition block: {if condition}Some text{/if}.
   Where condition are: Text == Text, 'Some Text' != 'Other text', 1 > 0.
+  Question "Language" with Options: 'English', 'French' will switching templates.
+  
+  for questions 'Products' with checkboxes with checked values 'Product_1' and 'Product_2' will be:
+  {option cost='300' name='Products' value='Product_1'}Product_1: {cost} €{/option} - render 'Product_2: 300 €'
+  {option cost='600' name='Products' value='Product_2'}Product_2: {cost} €{/option} - render 'Product_2: 600 €' 
+  {totalCost} - render '900'
 */
 
 var settings = {
-  docTemplateFile: 'Копия _[2018_04_17] Proposition type_EN',
+  docTemplateFiles: {
+    'English': 'Копия _[2018_04_17] Proposition type_EN',
+    'French': 'Копия _[2018_04_17] Proposition type_FR'
+  },
   outputDriveFolder: 'Proposals'
 }
 
 function run() {
-  var form = FormApp.getActiveForm();
-  var formResponses = form.getResponses();
-  var response = formResponses[formResponses.length - 1];
-  
-  var itemResponses = response.getItemResponses();
-  var responses = {};
-  for (var i = 0; i < itemResponses.length; i++) {
-    var itemResponse = itemResponses[i];
-    responses[itemResponse.getItem().getTitle()] = itemResponse.getResponse();
-  }
-  Logger.log(responses);
-
-  var file = DriveApp.getFilesByName(settings.docTemplateFile).next();
-  var newFileName = Utilities.formatString('%s %s %s', settings.docTemplateFile, responses.CORPORATE, Utilities.formatDate(new Date(), 'GMT', "yyyy-MM-dd HH:mm:ss"));
-  var folder = file.getParents().next();
-  var similarFolders = folder.getFoldersByName(settings.outputDriveFolder);
-  var targetFolder = similarFolders.hasNext() ? similarFolders.next() : null;
-  if (!targetFolder) {
-    targetFolder = folder.createFolder(settings.outputDriveFolder);
-  }
-  var fileCopy = file.makeCopy(newFileName, targetFolder);
-  var fileId = fileCopy.getId();
-  var pdfBlob = new DocFormatter(DocumentApp.openById(fileId))
-    .applyConstValues(responses)
-    .applyIfTags()
-    .asPdf();
-  //DriveApp.createFile(pdfBlob);
+  new Form(settings)
+    .applyResponsesToTemplate()
+    .applyPriceOptions();
 }
