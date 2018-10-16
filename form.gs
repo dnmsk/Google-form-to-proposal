@@ -1,7 +1,8 @@
 function Form(settings) {
   var form = FormApp.getActiveForm();
   var responses = undefined;
-  var output = { doc: copyTemplate() };
+  var output = { targetFolder: null };
+  output.doc = copyTemplate();
 
   this.applyResponsesToTemplate = function(rowId) {
     responses = responses || readResponses(rowId);
@@ -33,6 +34,13 @@ function Form(settings) {
     return this;
   }
   
+  this.saveAsPdf = function() {
+    var pdfBlob = new DocFormatter(output.doc)
+      .asPdf();
+    output.pdf = output.targetFolder.createFile(pdfBlob);
+    return this;
+  }
+  
   function getTemplateFile() {
     responses = responses || readResponses();
     var templateFileName = settings.docTemplateFiles[responses.Language] || settings.docTemplateFiles.English;
@@ -41,14 +49,14 @@ function Form(settings) {
   
   function copyTemplate() {
     var file = getTemplateFile();
-    var newFileName = Utilities.formatString('%s %s', Utilities.formatDate(new Date(), 'Europe/France', 'yyyy-MM-dd'), responses.CORPORATE);
+    var newFileName = Utilities.formatString('[%s] %s', Utilities.formatDate(new Date(), 'Europe/France', 'yyyy-MM-dd'), responses[settings.corporateNameQuestion]);
     var folder = file.getParents().next();
     var similarFolders = folder.getFoldersByName(settings.outputDriveFolder);
-    var targetFolder = similarFolders.hasNext() ? similarFolders.next() : null;
-    if (!targetFolder) {
-      targetFolder = folder.createFolder(settings.outputDriveFolder);
+    output.targetFolder = similarFolders.hasNext() ? similarFolders.next() : null;
+    if (!output.targetFolder) {
+      output.targetFolder = folder.createFolder(settings.outputDriveFolder);
     }
-    var fileCopy = file.makeCopy(newFileName, targetFolder);
+    var fileCopy = file.makeCopy(newFileName, output.targetFolder);
     var fileId = fileCopy.getId();
     return DocumentApp.openById(fileId);
   }

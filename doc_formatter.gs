@@ -21,6 +21,9 @@ function DocFormatter(doc) {
   }
   
   this.asPdf = function() {
+    var docId = doc.getId();
+    doc.saveAndClose();
+    doc = DocumentApp.openById(docId);
     return doc.getAs('application/pdf');
   }
   
@@ -37,7 +40,7 @@ function DocFormatter(doc) {
     option: function(textBody, results) {
       var totalCost = 0;
       for (var i=0; i<results.length; i++) {
-        totalCost += results[i].cost;
+        totalCost += results[i].cost || 0;
       }
       textBody.replaceText('{totalCost}', totalCost)
     }
@@ -282,22 +285,38 @@ function DocFormatter(doc) {
     var parts = [];
     var buffer = '';
     var bracket = '';
+    var isOperator = false;
     var operators = [ '>', '>=' , '=' , '<', '<=', '!=', 'in', 'not_in' ];
     var logical = [ 'and', 'or' ];
     for (var i=0; i<commandPart.length; i++) {
       var char = commandPart[i];
       if (bracket == '' && char == ' ') {
         if (buffer == '') { continue; }
-        parts.push(buffer); buffer = ''; continue;
+        parts.push(buffer); buffer = ''; isOperator = false; continue;
       }
       if (brackets.indexOf(char) >= 0) {
         if (bracket == '') { bracket = char; continue; }
-        if (bracket == char) { parts.push(buffer); buffer = ''; bracket = ''; continue; }
+        if (bracket == char) { parts.push(buffer); buffer = ''; bracket = ''; isOperator = false; continue; }
       }
       if (bracket != '') { buffer += char; continue; }
+      if (operators.indexOf(char) >= 0 && !isOperator) {
+        if (buffer != '') {
+          parts.push(buffer);
+          buffer = '';
+        }
+        isOperator = true; 
+      }
+      if (operators.indexOf(char) < 0 && isOperator) {
+        if (buffer != '') {
+          parts.push(buffer);
+          buffer = '';
+        }
+        isOperator = false;
+      }
       buffer += char;
       if (buffer != char && operators.indexOf(buffer) >= 0 || logical.indexOf(buffer) >= 0) {
         parts.push(buffer);
+        isOperator = false;
         buffer = '';
         bracket = '';
       }
